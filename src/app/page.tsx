@@ -189,6 +189,7 @@ function ChatWindow() {
         const markdownInfo = enableMarkdownOutput ? "\n\n(请用Markdown语法格式化输出，并将最终结果放入一个代码块中)" : "";
         
         let promptContent = input;
+        // 已修正：移除向prompt中注入的 (联网搜索已开启) 文本
         if (fileContent) {
             promptContent = `[上传文件内容]:\n${fileContent}\n\n[我的问题]:\n${input}${deepSearchInfo}${markdownInfo}`;
         } else {
@@ -206,16 +207,14 @@ function ChatWindow() {
         try {
             const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
             
-            // --- 已修正：构建一个正确的API请求体 ---
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const payload: any = {
                 model: selectedModel,
                 messages: newMessages,
-                temperature: 1.0, // 根据您的文档，设置一个合理的默认值
-                max_tokens: 32768, // 根据您的文档，设置一个合理的默认值
+                temperature: 1.0,
+                max_tokens: 32768,
             };
 
-            // --- 已修正：在这里真正地激活联网搜索 ---
             if (enableWebSearch) {
                 payload.search = true;
             }
@@ -235,8 +234,15 @@ function ChatWindow() {
             }
 
             const data = await response.json();
-            const assistantMessage = data.choices[0].message;
-            setMessages(prev => [...prev, assistantMessage]);
+            
+            // --- 已修正：过滤API返回的多余数据 ---
+            const assistantReply = data.choices[0].message;
+            const cleanAssistantMessage: Message = {
+                role: 'assistant',
+                content: assistantReply.content
+            };
+            setMessages(prev => [...prev, cleanAssistantMessage]);
+
         } catch (error) {
             console.error("Error calling DeepSeek API:", error);
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
