@@ -67,23 +67,6 @@ function ChatWindow() {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // --- 终极诊断代码 ---
-    useEffect(() => {
-        // 这个 effect 只在组件首次加载时运行一次
-        console.log(`[Debug] Attempting to read API Key: ${process.env.NEXT_PUBLIC_DEEPSEEK_API_KEY}`);
-        
-        // 打印出所有可用的 NEXT_PUBLIC_ 环境变量，以确认 Vercel 是否正确注入
-        const publicEnv: { [key: string]: string | undefined } = {};
-        for (const key in process.env) {
-            if (key.startsWith('NEXT_PUBLIC_')) {
-                publicEnv[key] = process.env[key];
-            }
-        }
-        console.log('[Debug] All available public environment variables:', publicEnv);
-
-    }, []); // 空依赖数组确保只运行一次
-
-
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
@@ -102,7 +85,7 @@ function ChatWindow() {
         
         const apiKey = process.env.NEXT_PUBLIC_DEEPSEEK_API_KEY;
         if (!apiKey) {
-            console.error("API Key is not configured. Please check your environment variables.");
+            console.error("API Key is not configured.");
             setMessages(prev => [...prev, { role: 'assistant', content: `抱歉，客户端API Key未配置。请在Vercel项目中检查名为 NEXT_PUBLIC_DEEPSEEK_API_KEY 的环境变量是否正确设置，并确保已清理缓存并重新部署。` }]);
             setIsLoading(false);
             return;
@@ -210,11 +193,10 @@ function ChatWindow() {
                     <div className="flex items-center flex-wrap gap-x-4 gap-y-2 mb-2">
                         <div className="flex items-center space-x-2">
                             <label htmlFor="model-select" className="text-sm font-medium text-gray-700">模型:</label>
+                            {/* --- 已修正：使用官方支持的模型ID --- */}
                             <select id="model-select" value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)} className="p-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white/80">
                                 <option value="deepseek-chat">DeepSeek-Chat</option>
                                 <option value="deepseek-coder">DeepSeek-Coder</option>
-                                <option value="DeepSeek-R1-0528">DeepSeek-R1-0528</option>
-                                <option value="DeepSeek-V3-0324">DeepSeek-V3-0324</option>
                             </select>
                         </div>
                         <label htmlFor="deep-search-toggle" className="flex items-center cursor-pointer">
