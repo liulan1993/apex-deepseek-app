@@ -195,8 +195,8 @@ function ChatWindow() {
                             <label htmlFor="model-select" className="text-sm font-medium text-gray-700">模型:</label>
                             {/* --- 已修正：使用官方支持的模型ID --- */}
                             <select id="model-select" value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)} className="p-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white/80">
-                                <option value="deepseek-chat">DeepSeek-Chat</option>
-                                <option value="deepseek-coder">DeepSeek-Coder</option>
+                                <option value="deepseek-chat">DeepSeek-V3</option>
+                                <option value="deepseek-reasoner">DeepSeek-R1</option>
                             </select>
                         </div>
                         <label htmlFor="deep-search-toggle" className="flex items-center cursor-pointer">
