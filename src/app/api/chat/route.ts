@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
             model: model,
             messages: messagesToSend,
             temperature: 1.0,
-            max_tokens: 32768,
+            max_tokens: 8192, // 已修正: 将 max_tokens 的值调整为 API 允许的最大值
             search: enableWebSearch, 
         };
 
