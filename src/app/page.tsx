@@ -186,14 +186,13 @@ function ChatWindow() {
         }
         
         const deepSearchInfo = enableDeepSearch ? "\n\n(深度搜索已开启)" : "";
-        const webSearchInfo = enableWebSearch ? "\n\n(联网搜索已开启)" : "";
         const markdownInfo = enableMarkdownOutput ? "\n\n(请用Markdown语法格式化输出，并将最终结果放入一个代码块中)" : "";
         
         let promptContent = input;
         if (fileContent) {
-            promptContent = `[上传文件内容]:\n${fileContent}\n\n[我的问题]:\n${input}${deepSearchInfo}${webSearchInfo}${markdownInfo}`;
+            promptContent = `[上传文件内容]:\n${fileContent}\n\n[我的问题]:\n${input}${deepSearchInfo}${markdownInfo}`;
         } else {
-            promptContent = `${input}${deepSearchInfo}${webSearchInfo}${markdownInfo}`;
+            promptContent = `${input}${deepSearchInfo}${markdownInfo}`;
         }
 
         const newUserMessage: Message = { role: 'user', content: promptContent };
@@ -206,13 +205,28 @@ function ChatWindow() {
 
         try {
             const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
+            
+            // --- 已修正：构建一个正确的API请求体 ---
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const payload: any = {
+                model: selectedModel,
+                messages: newMessages,
+                temperature: 1.0, // 根据您的文档，设置一个合理的默认值
+                max_tokens: 32768, // 根据您的文档，设置一个合理的默认值
+            };
+
+            // --- 已修正：在这里真正地激活联网搜索 ---
+            if (enableWebSearch) {
+                payload.search = true;
+            }
+
             const response = await fetch(DEEPSEEK_API_URL, {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${apiKey}`
                 },
-                body: JSON.stringify({ model: selectedModel, messages: newMessages }),
+                body: JSON.stringify(payload),
             });
 
             if (!response.ok) {
