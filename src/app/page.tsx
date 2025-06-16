@@ -2,9 +2,12 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+
 
 // --- 图标组件 ---
-// 这些是内联的SVG图标，无需额外安装库
 const PaperclipIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.59a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
@@ -17,6 +20,28 @@ const XIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <path d="m6 6 12 12" />
   </svg>
 );
+
+const CopyIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+        <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+    </svg>
+);
+
+const DownloadIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <polyline points="7 10 12 15 17 10" />
+        <line x1="12" x2="12" y1="15" y2="3" />
+    </svg>
+);
+
+const CheckIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="20 6 9 17 4 12" />
+    </svg>
+);
+
 
 // --- 背景动画组件 ---
 function FloatingPaths({ position }: { position: number }) {
@@ -53,6 +78,61 @@ interface Message {
     role: 'user' | 'assistant';
     content: string;
 }
+
+// 代码块渲染组件
+const CodeBlock = ({ node, inline, className, children, ...props }: any) => {
+    const [copied, setCopied] = useState(false);
+    const match = /language-(\w+)/.exec(className || '');
+    const code = String(children).replace(/\n$/, '');
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(code).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        });
+    };
+    
+    const handleDownload = () => {
+        const blob = new Blob([code], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `code-snippet.${match ? match[1] : 'txt'}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
+    return !inline && match ? (
+        <div className="relative my-4 rounded-lg bg-gray-800 text-sm">
+            <div className="flex items-center justify-between px-4 py-2 bg-gray-700 rounded-t-lg">
+                <span className="text-gray-300 text-xs">{match[1]}</span>
+                <div className="flex items-center gap-x-2">
+                    <button onClick={handleCopy} className="p-1 text-gray-300 hover:text-white transition-colors">
+                        {copied ? <CheckIcon className="w-4 h-4 text-green-400" /> : <CopyIcon className="w-4 h-4" />}
+                    </button>
+                    <button onClick={handleDownload} className="p-1 text-gray-300 hover:text-white transition-colors">
+                       <DownloadIcon className="w-4 h-4" />
+                    </button>
+                </div>
+            </div>
+            <SyntaxHighlighter
+                style={atomDark}
+                language={match[1]}
+                PreTag="div"
+                {...props}
+            >
+                {code}
+            </SyntaxHighlighter>
+        </div>
+    ) : (
+        <code className="bg-gray-200 text-red-600 px-1 rounded-sm" {...props}>
+            {children}
+        </code>
+    );
+};
+
 
 function ChatWindow() {
     const [messages, setMessages] = useState<Message[]>([]);
@@ -170,7 +250,18 @@ function ChatWindow() {
                     {messages.map((msg, index) => (
                         <div key={index} className={`flex my-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                             <div className={`rounded-lg px-4 py-2 max-w-lg whitespace-pre-wrap shadow-sm ${msg.role === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-50 text-gray-800'}`}>
-                                {msg.content}
+                                {msg.role === 'assistant' && enableMarkdownOutput ? (
+                                    <ReactMarkdown
+                                        components={{
+                                            code: CodeBlock,
+                                        }}
+                                        className="prose dark:prose-invert"
+                                    >
+                                        {msg.content}
+                                    </ReactMarkdown>
+                                ) : (
+                                    msg.content
+                                )}
                             </div>
                         </div>
                     ))}
@@ -193,7 +284,6 @@ function ChatWindow() {
                     <div className="flex items-center flex-wrap gap-x-4 gap-y-2 mb-2">
                         <div className="flex items-center space-x-2">
                             <label htmlFor="model-select" className="text-sm font-medium text-gray-700">模型:</label>
-                            {/* --- 已修正：使用官方支持的模型ID --- */}
                             <select id="model-select" value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)} className="p-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white/80">
                                 <option value="deepseek-chat">DeepSeek-V3</option>
                                 <option value="deepseek-reasoner">DeepSeek-R1</option>
