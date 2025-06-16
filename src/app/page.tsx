@@ -67,6 +67,14 @@ function ChatWindow() {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // --- 新增：用于调试的 useEffect ---
+    useEffect(() => {
+        // 这个 effect 只在组件首次加载时运行一次
+        // 它会在浏览器的开发者控制台打印出环境变量的值
+        console.log(`[Debug] API Key from env: ${process.env.NEXT_PUBLIC_DEEPSEEK_API_KEY}`);
+    }, []); // 空依赖数组确保只运行一次
+
+
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
@@ -83,11 +91,10 @@ function ChatWindow() {
         if ((!input.trim() && !selectedFile) || isLoading) return;
         setIsLoading(true);
         
-        // --- 新增：API Key 检查 ---
         const apiKey = process.env.NEXT_PUBLIC_DEEPSEEK_API_KEY;
         if (!apiKey) {
             console.error("API Key is not configured. Please check your environment variables.");
-            setMessages(prev => [...prev, { role: 'assistant', content: `抱歉，客户端API Key未配置。请在Vercel项目中检查名为 NEXT_PUBLIC_DEEPSEEK_API_KEY 的环境变量是否正确设置。` }]);
+            setMessages(prev => [...prev, { role: 'assistant', content: `抱歉，客户端API Key未配置。请在Vercel项目中检查名为 NEXT_PUBLIC_DEEPSEEK_API_KEY 的环境变量是否正确设置，并尝试清理缓存后重新部署。` }]);
             setIsLoading(false);
             return;
         }
@@ -125,13 +132,11 @@ function ChatWindow() {
         if(fileInputRef.current) fileInputRef.current.value = '';
 
         try {
-            // 直接调用 DeepSeek API
             const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
             const response = await fetch(DEEPSEEK_API_URL, {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
-                    // 使用 Vercel 提供的环境变量
                     'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({ model: selectedModel, messages: newMessages }),
