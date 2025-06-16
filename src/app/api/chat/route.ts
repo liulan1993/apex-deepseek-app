@@ -83,7 +83,8 @@ export async function POST(req: NextRequest) {
         
         const systemMessage: Message = { role: 'system', content: systemContent };
         
-        let messagesToSend: Message[] = [systemMessage, ...messages];
+        // 已修正：将 'let' 改为 'const'
+        const messagesToSend: Message[] = [systemMessage, ...messages];
         
         if (enableMarkdownOutput) {
             messagesToSend[messagesToSend.length - 1].content += "\n\n(请用Markdown语法格式化输出，并将最终结果放入一个代码块中)";

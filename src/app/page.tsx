@@ -185,7 +185,7 @@ function ChatWindow() {
         if(fileInputRef.current) fileInputRef.current.value = '';
 
         try {
-            // --- 已修正：所有逻辑都交给后端的/api/chat处理 ---
+            // --- 所有逻辑都交给后端的/api/chat处理 ---
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
