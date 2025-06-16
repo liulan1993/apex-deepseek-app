@@ -80,7 +80,8 @@ interface Message {
 }
 
 // 代码块渲染组件
-const CodeBlock = ({ node, inline, className, children, ...props }: any) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const CodeBlock = ({ node: _node, inline, className, children, ...props }: any) => {
     const [copied, setCopied] = useState(false);
     const match = /language-(\w+)/.exec(className || '');
     const code = String(children).replace(/\n$/, '');
