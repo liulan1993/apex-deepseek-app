@@ -252,14 +252,15 @@ function ChatWindow() {
                         <div key={index} className={`flex my-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                             <div className={`rounded-lg px-4 py-2 max-w-lg whitespace-pre-wrap shadow-sm ${msg.role === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-50 text-gray-800'}`}>
                                 {msg.role === 'assistant' && enableMarkdownOutput ? (
-                                    <ReactMarkdown
-                                        components={{
-                                            code: CodeBlock,
-                                        }}
-                                        className="prose dark:prose-invert"
-                                    >
-                                        {msg.content}
-                                    </ReactMarkdown>
+                                    <div className="prose dark:prose-invert max-w-none">
+                                        <ReactMarkdown
+                                            components={{
+                                                code: CodeBlock,
+                                            }}
+                                        >
+                                            {msg.content}
+                                        </ReactMarkdown>
+                                    </div>
                                 ) : (
                                     msg.content
                                 )}
