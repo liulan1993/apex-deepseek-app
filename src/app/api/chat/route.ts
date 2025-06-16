@@ -15,38 +15,35 @@ interface RequestOptions {
 }
 
 // Tavily API 搜索函数
+// 已修正：现在失败时会抛出错误，而不是返回字符串
 async function tavilySearch(query: string): Promise<string> {
     const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
     if (!TAVILY_API_KEY) {
-        console.error('Tavily API key is not configured.');
-        return "网络搜索功能未配置。";
+        throw new Error('Tavily API key is not configured on the server.');
     }
     
-    try {
-        const response = await fetch('https://api.tavily.com/search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                api_key: TAVILY_API_KEY,
-                query: query,
-                search_depth: 'advanced',
-                max_results: 5,
-                include_answer: false,
-            }),
-        });
-        if (!response.ok) {
-            throw new Error(`Tavily API responded with status ${response.status}`);
-        }
-        const data = await response.json();
-        return data.results.map((r: { content: string }) => r.content).join('\n\n');
-    } catch (error) {
-        console.error('Tavily search failed:', error);
-        return "执行网络搜索时出错。";
+    const response = await fetch('https://api.tavily.com/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            api_key: TAVILY_API_KEY,
+            query: query,
+            search_depth: 'advanced',
+            max_results: 5,
+            include_answer: false,
+        }),
+    });
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Tavily API responded with status ${response.status}: ${errorText}`);
     }
+    const data = await response.json();
+    return data.results.map((r: { content: string }) => r.content).join('\n\n');
 }
 
 // 主 API 路由处理函数
 export async function POST(req: NextRequest) {
+    // 已修正：将整个逻辑包裹在try/catch中，确保任何错误都能被捕获并以JSON格式返回
     try {
         const body = await req.json();
         const { messages, options }: { messages: Message[], options: RequestOptions } = body;
@@ -65,7 +62,6 @@ export async function POST(req: NextRequest) {
             userQuery = `基于以下文件内容:\n"""\n${fileContent}\n"""\n\n请回答这个问题: ${userQuery}`;
         }
         
-        // 更新最后一条用户消息的内容，如果它被修改过
         messages[messages.length - 1].content = userQuery;
 
         const currentDate = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
@@ -83,7 +79,6 @@ export async function POST(req: NextRequest) {
         
         const systemMessage: Message = { role: 'system', content: systemContent };
         
-        // 已修正：将 'let' 改为 'const'
         const messagesToSend: Message[] = [systemMessage, ...messages];
         
         if (enableMarkdownOutput) {
@@ -95,11 +90,11 @@ export async function POST(req: NextRequest) {
             messages: messagesToSend,
             temperature: 1.0,
             max_tokens: 32768,
-            search: enableWebSearch, // 也将官方的search参数带上，双重保险
+            search: enableWebSearch, 
         };
 
         if (enableDeepSearch) {
-            // 在此添加深度搜索相关的任何特定API参数, (e.g., payload.deep_search = true)
+            // 在此添加深度搜索相关的任何特定API参数
         }
 
         const response = await fetch('https://api.deepseek.com/chat/completions', {
