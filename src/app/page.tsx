@@ -82,6 +82,15 @@ function ChatWindow() {
     const handleSendMessage = async () => {
         if ((!input.trim() && !selectedFile) || isLoading) return;
         setIsLoading(true);
+        
+        // --- 新增：API Key 检查 ---
+        const apiKey = process.env.NEXT_PUBLIC_DEEPSEEK_API_KEY;
+        if (!apiKey) {
+            console.error("API Key is not configured. Please check your environment variables.");
+            setMessages(prev => [...prev, { role: 'assistant', content: `抱歉，客户端API Key未配置。请在Vercel项目中检查名为 NEXT_PUBLIC_DEEPSEEK_API_KEY 的环境变量是否正确设置。` }]);
+            setIsLoading(false);
+            return;
+        }
 
         let fileContent = '';
         if (selectedFile) {
@@ -123,7 +132,7 @@ function ChatWindow() {
                 headers: { 
                     'Content-Type': 'application/json',
                     // 使用 Vercel 提供的环境变量
-                    'Authorization': `Bearer ${process.env.NEXT_PUBLIC_DEEPSEEK_API_KEY}`
+                    'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({ model: selectedModel, messages: newMessages }),
             });
