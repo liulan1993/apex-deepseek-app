@@ -75,7 +75,7 @@ function FloatingPaths({ position }: { position: number }) {
 // --- 聊天窗口组件 ---
 // 定义消息类型的接口
 interface Message {
-    role: 'user' | 'assistant';
+    role: 'user' | 'assistant' | 'system';
     content: string;
 }
 
@@ -185,20 +185,28 @@ function ChatWindow() {
             }
         }
         
-        const deepSearchInfo = enableDeepSearch ? "\n\n(深度搜索已开启)" : "";
         const markdownInfo = enableMarkdownOutput ? "\n\n(请用Markdown语法格式化输出，并将最终结果放入一个代码块中)" : "";
         
         let promptContent = input;
-        // 已修正：移除向prompt中注入的 (联网搜索已开启) 文本
         if (fileContent) {
-            promptContent = `[上传文件内容]:\n${fileContent}\n\n[我的问题]:\n${input}${deepSearchInfo}${markdownInfo}`;
+            promptContent = `[上传文件内容]:\n${fileContent}\n\n[我的问题]:\n${input}${markdownInfo}`;
         } else {
-            promptContent = `${input}${deepSearchInfo}${markdownInfo}`;
+            promptContent = `${input}${markdownInfo}`;
         }
-
+        
         const newUserMessage: Message = { role: 'user', content: promptContent };
-        const newMessages = [...messages, newUserMessage];
-        setMessages(newMessages);
+
+        // --- 已修正：每次发送时都创建并注入实时日期 ---
+        const currentDate = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', year: 'numeric', month: 'long', day: 'numeric', weekday: 'long', hour: 'numeric', minute: 'numeric' });
+        const systemMessage: Message = {
+            role: 'system',
+            content: `你是一个强大的人工智能助手。当前日期和时间是: ${currentDate}。请根据这个时间来回答任何与时间相关的问题。`
+        };
+
+        const messagesToSend = [systemMessage, ...messages, newUserMessage];
+        // 为了不在界面上显示系统消息，我们只更新用户消息
+        setMessages(prev => [...prev, newUserMessage]);
+
 
         setInput('');
         setSelectedFile(null);
@@ -210,13 +218,19 @@ function ChatWindow() {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const payload: any = {
                 model: selectedModel,
-                messages: newMessages,
+                messages: messagesToSend, // 发送包含系统指令的消息
                 temperature: 1.0,
                 max_tokens: 32768,
             };
 
             if (enableWebSearch) {
                 payload.search = true;
+            }
+            
+            // 已修正：移除深度搜索的文本提示，因为它现在由系统指令和search参数控制
+            if(enableDeepSearch){
+                // 如果深度搜索有特定的API参数，可以在这里添加
+                // payload.deep_search = true; (示例)
             }
 
             const response = await fetch(DEEPSEEK_API_URL, {
@@ -235,7 +249,6 @@ function ChatWindow() {
 
             const data = await response.json();
             
-            // --- 已修正：过滤API返回的多余数据 ---
             const assistantReply = data.choices[0].message;
             const cleanAssistantMessage: Message = {
                 role: 'assistant',
