@@ -196,11 +196,17 @@ function ChatWindow() {
         
         const newUserMessage: Message = { role: 'user', content: promptContent };
 
-        // --- 已修正：每次发送时都创建并注入实时日期 ---
+        // --- 已修正：动态创建系统指令 ---
         const currentDate = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', year: 'numeric', month: 'long', day: 'numeric', weekday: 'long', hour: 'numeric', minute: 'numeric' });
+        
+        let systemContent = `你是一个强大的人工智能助手。当前日期和时间是: ${currentDate}。请根据这个时间来回答任何与时间相关的问题。`;
+        if (enableWebSearch) {
+             systemContent = `你是一个强大的人工智能助手，并已连接到实时互联网。当前日期和时间是: ${currentDate}。请务必优先使用实时网络搜索结果来回答用户的问题，特别是关于新闻、事件或最新信息的问题。`;
+        }
+        
         const systemMessage: Message = {
             role: 'system',
-            content: `你是一个强大的人工智能助手。当前日期和时间是: ${currentDate}。请根据这个时间来回答任何与时间相关的问题。`
+            content: systemContent
         };
 
         const messagesToSend = [systemMessage, ...messages, newUserMessage];
@@ -227,7 +233,6 @@ function ChatWindow() {
                 payload.search = true;
             }
             
-            // 已修正：移除深度搜索的文本提示，因为它现在由系统指令和search参数控制
             if(enableDeepSearch){
                 // 如果深度搜索有特定的API参数，可以在这里添加
                 // payload.deep_search = true; (示例)
