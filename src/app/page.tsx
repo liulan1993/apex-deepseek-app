@@ -163,14 +163,9 @@ function ChatWindow() {
     const handleSendMessage = async () => {
         if ((!input.trim() && !selectedFile) || isLoading) return;
         setIsLoading(true);
-        
-        const apiKey = process.env.NEXT_PUBLIC_DEEPSEEK_API_KEY;
-        if (!apiKey) {
-            console.error("API Key is not configured.");
-            setMessages(prev => [...prev, { role: 'assistant', content: `抱歉，客户端API Key未配置。请在Vercel项目中检查名为 NEXT_PUBLIC_DEEPSEEK_API_KEY 的环境变量是否正确设置，并确保已清理缓存并重新部署。` }]);
-            setIsLoading(false);
-            return;
-        }
+
+        const newUserMessage: Message = { role: 'user', content: input };
+        setMessages(prev => [...prev, newUserMessage]);
 
         let fileContent = '';
         if (selectedFile) {
@@ -185,85 +180,38 @@ function ChatWindow() {
             }
         }
         
-        const markdownInfo = enableMarkdownOutput ? "\n\n(请用Markdown语法格式化输出，并将最终结果放入一个代码块中)" : "";
-        
-        let promptContent = input;
-        if (fileContent) {
-            promptContent = `[上传文件内容]:\n${fileContent}\n\n[我的问题]:\n${input}${markdownInfo}`;
-        } else {
-            promptContent = `${input}${markdownInfo}`;
-        }
-        
-        const newUserMessage: Message = { role: 'user', content: promptContent };
-
-        // --- 已修正：动态创建系统指令 ---
-        const currentDate = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', year: 'numeric', month: 'long', day: 'numeric', weekday: 'long', hour: 'numeric', minute: 'numeric' });
-        
-        let systemContent = `你是一个强大的人工智能助手。当前日期和时间是: ${currentDate}。请根据这个时间来回答任何与时间相关的问题。`;
-        if (enableWebSearch) {
-             systemContent = `你是一个强大的人工智能助手，并已连接到实时互联网。当前日期和时间是: ${currentDate}。请务必优先使用实时网络搜索结果来回答用户的问题，特别是关于新闻、事件或最新信息的问题。`;
-        }
-        
-        const systemMessage: Message = {
-            role: 'system',
-            content: systemContent
-        };
-
-        const messagesToSend = [systemMessage, ...messages, newUserMessage];
-        // 为了不在界面上显示系统消息，我们只更新用户消息
-        setMessages(prev => [...prev, newUserMessage]);
-
-
         setInput('');
         setSelectedFile(null);
         if(fileInputRef.current) fileInputRef.current.value = '';
 
         try {
-            const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
-            
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const payload: any = {
-                model: selectedModel,
-                messages: messagesToSend, // 发送包含系统指令的消息
-                temperature: 1.0,
-                max_tokens: 32768,
-            };
-
-            if (enableWebSearch) {
-                payload.search = true;
-            }
-            
-            if(enableDeepSearch){
-                // 如果深度搜索有特定的API参数，可以在这里添加
-                // payload.deep_search = true; (示例)
-            }
-
-            const response = await fetch(DEEPSEEK_API_URL, {
+            // --- 已修正：所有逻辑都交给后端的/api/chat处理 ---
+            const response = await fetch('/api/chat', {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify(payload),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    messages: [...messages, newUserMessage],
+                    options: {
+                        model: selectedModel,
+                        enableWebSearch,
+                        enableDeepSearch,
+                        enableMarkdownOutput,
+                        fileContent,
+                    },
+                }),
             });
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error ? errorData.error.message : 'API请求失败');
+                throw new Error(errorData.error || '后端API请求失败');
             }
-
-            const data = await response.json();
             
-            const assistantReply = data.choices[0].message;
-            const cleanAssistantMessage: Message = {
-                role: 'assistant',
-                content: assistantReply.content
-            };
-            setMessages(prev => [...prev, cleanAssistantMessage]);
+            const assistantMessage = await response.json();
+            setMessages(prev => [...prev, assistantMessage]);
 
         } catch (error) {
-            console.error("Error calling DeepSeek API:", error);
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error("Error calling backend API:", error);
+            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
             setMessages(prev => [...prev, { role: 'assistant', content: `抱歉，出错了: ${errorMessage}` }]);
         } finally {
             setIsLoading(false);
